@@ -1,69 +1,72 @@
 import axios from 'axios';
-import React,{useState,useEffect,useRef} from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import styled from "styled-components"
 import ChatBox from '../components/ChatBox';
 import Contacts from '../components/Contacts';
 import Welcome from '../components/Welcome';
 import { host, usersRoute } from '../utils/apiRoutes';
-import {io} from "socket.io-client"
+import { io } from "socket.io-client"
 const Chat = () => {
   const navigate = useNavigate()
   const socket = useRef()
   const [contacts, setContacts] = useState([])
   const [liveUser, setliveUser] = useState("")
   const [liveChat, setLiveChat] = useState(undefined)
-  const [isloaded,setIsLoaded] = useState(false)
-  const loadUser =async () => {
+  const [isloaded, setIsLoaded] = useState(false)
+  const loadUser = async () => {
     const user = JSON.parse(localStorage.getItem("chat-user"))
     //console.log(user)
     setliveUser((event) => event = user)
-    console.log(liveUser,"live user")
+    console.log(liveUser, "live user")
   }
   useEffect(() => {
     if (!localStorage.getItem("chat-user")) {
-      navigate("/login")}else{
-          loadUser()
-          setIsLoaded(true)
-      }
+      navigate("/login")
+    } else {
+      loadUser()
+      setIsLoaded(true)
+    }
   }, [])
 
   useEffect(() => {
-    if(liveUser){
-      socket.current = io(host)
-      socket.current.emit("add-user",liveUser.user)
+    if (liveUser) {
+      socket.current = io(host, {
+        transports: ["websocket"]   // skip polling, go straight to WebSocket
+      })
+      socket.current.emit("add-user", liveUser.user)
     }
   }, [liveUser])
 
-  const getContacts = async ()=>{
+  const getContacts = async () => {
     const data = await axios.get(usersRoute)
-    setContacts((event)=>event = data.data.filter(item => item.userName !== liveUser.userName))
+    setContacts((event) => event = data.data.filter(item => item.userName !== liveUser.userName))
     console.log(contacts)
   }
   useEffect(() => {
-      if (liveUser){
-        console.log(liveUser.isSet)
-        if (liveUser.isSet === true){
-          console.log("loading contacts")
-          getContacts()
-        }else navigate("/setavatar")
-      }
+    if (liveUser) {
+      console.log(liveUser.isSet)
+      if (liveUser.isSet === true) {
+        console.log("loading contacts")
+        getContacts()
+      } else navigate("/setavatar")
+    }
   }, [liveUser])
 
-  
+
   const handleChatChange = (chat) => {
-    setLiveChat((event)=>event = chat)
+    setLiveChat((event) => event = chat)
   }
-  
+
   return (
     <>
-    <Container>
-      <div className="chatbox">
-       <Contacts Contact={contacts} User={liveUser} changeChat = {handleChatChange}></Contacts>
-       {isloaded && liveChat === undefined ? <Welcome User={liveUser.userName}></Welcome> 
-       : <ChatBox LiveChat={liveChat} LiveUser={liveUser} Socket={socket}></ChatBox>}
-      </div>
-    </Container>
+      <Container>
+        <div className="chatbox">
+          <Contacts Contact={contacts} User={liveUser} changeChat={handleChatChange}></Contacts>
+          {isloaded && liveChat === undefined ? <Welcome User={liveUser.userName}></Welcome>
+            : <ChatBox LiveChat={liveChat} LiveUser={liveUser} Socket={socket}></ChatBox>}
+        </div>
+      </Container>
     </>
   )
 }
